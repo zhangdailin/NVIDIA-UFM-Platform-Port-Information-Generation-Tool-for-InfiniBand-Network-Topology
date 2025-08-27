@@ -1,120 +1,119 @@
-## 项目简介
+## Overview
 
-使用 UFM 导出的端口信息 CSV，自动生成 CLOS 三层（Core/Spine/Leaf）拓扑的交互式网页（Cytoscape）。支持自动发现最新 CSV、POD 分组展示、点击节点/边查看信息、POD 视图切换，以及可配置的布局参数。
+Generate an interactive CLOS (Core/Spine/Leaf) topology web page from UFM-exported port CSV data. The output is a Cytoscape-based HTML that supports POD grouping, interactive inspection (click nodes/edges), and configurable layout.
 
-## 环境要求
+## Requirements
 
-- 已安装 Python 3.8+（系统自带或 Anaconda 皆可）
-- 无需额外第三方库（前端通过 CDN 加载 Cytoscape）
+- Python 3.8+ (system Python or Anaconda)
+- No extra Python packages required (Cytoscape is loaded via CDN in the HTML)
 
-## CSV 数据要求
+## CSV format
 
-脚本读取 UFM 端口导出 CSV，需包含以下列（区分大小写）：
+The script expects a UFM port CSV with these exact column headers:
 - `System`
 - `Port`
 - `Peer Node`
 - `Peer Port`
 
-脚本会自动处理 BOM 头（如果有）。文件名不限，默认会在当前目录下按通配符 `Ports-*.csv` 自动选择“修改时间最新”的一个。
+The script handles BOM automatically if present. File name is flexible; by default the script will pick the most recently modified one matching `Ports-*.csv` in the current directory.
 
-## 快速开始
+## Quick start
 
-Windows PowerShell（当前项目根目录）：
+Windows PowerShell (run in the project root):
 ```powershell
 python .\generate_topology.py
 ```
 
-或指定 CSV 和输出文件：
+Specify CSV and output file explicitly:
 ```powershell
 python .\generate_topology.py --csv .\Ports-20250731.csv --output .\topology.html
 ```
 
-执行完成后，打开生成的 `topology.html` 即可查看拓扑。
+Open the generated `topology.html` in a browser to view the topology.
 
-## 常用参数
+## CLI options
 
 ```text
---csv <path>                指定端口 CSV 文件路径；未指定时自动匹配最新 Ports-*.csv
---csv-glob <pattern>        自动匹配模式，默认 Ports-*.csv
---output <file>             输出 HTML 文件名，默认 topology.html
+--csv <path>                Path to the UFM ports CSV. If not set, the newest
+                            file matching --csv-glob is used.
+--csv-glob <pattern>        Glob for auto-picking CSV (default: Ports-*.csv)
+--output <file>             Output HTML file name (default: topology.html)
 
---layer-gap <int>           三层（Core/Spine/Leaf）之间的垂直间距，默认 900
---node-gap <int>            Core 同层节点间距，默认 200
---spine-gap <int>           Spine 同层节点间距，默认 350
---leaf-gap <int>            Leaf 同层节点间距，默认 350
---label-width <int>         节点标签最大宽度（px），默认 150（长设备名更易读）
+--layer-gap <int>           Vertical gap between Core/Spine/Leaf layers (default: 900)
+--node-gap <int>            Horizontal gap between Core nodes (default: 200)
+--spine-gap <int>           Horizontal gap between Spine nodes (default: 350)
+--leaf-gap <int>            Horizontal gap between Leaf nodes (default: 350)
+--label-width <int>         Max label width in px (default: 150)
 
---pod-spacing <int>         ALL 视图中各 POD 的固定水平间距；
-                            不指定时会“自动计算”（基于 POD 内容宽度 + pod-margin）
---pod-margin <int>          自动计算 POD 间距时的额外边距，默认 200
+--pod-spacing <int>         Fixed horizontal spacing between PODs in ALL view;
+                            if omitted, spacing is auto-calculated from content width
+                            plus --pod-margin.
+--pod-margin <int>          Extra margin used by auto POD spacing (default: 200)
 
---max-chains <int>          页面底部示例链路条数上限，默认 15
---debug                     打印调试信息
---debug-target-leaf <name>  仅在 --debug 时，打印指定 Leaf 的链路详情
+--max-chains <int>          Max number of sample chain lines shown (default: 15)
+--debug                     Print debug logs
+--debug-target-leaf <name>  With --debug, print link details for a specific Leaf
 ```
 
-示例：
+Examples:
 ```powershell
-# 使用最新 CSV + 默认参数
+# Use newest CSV with defaults
 python .\generate_topology.py
 
-# 指定 CSV、输出到 out.html、加宽标签
+# Explicit CSV, custom output, wider labels
 python .\generate_topology.py --csv .\Ports-20250731.csv --output .\out.html --label-width 180
 
-# 手动加大 POD 间距（优先级高于自动计算）
+# Force large fixed POD spacing (overrides auto spacing)
 python .\generate_topology.py --pod-spacing 1800
 
-# 使用自动间距，但加大外边距
+# Keep auto spacing but increase outer margin
 python .\generate_topology.py --pod-margin 300
 
-# 打印调试信息并聚焦某个 Leaf 的链路
+# Debug, focusing on a specific Leaf
 python .\generate_topology.py --debug --debug-target-leaf MDC-...-POD2-...-IBLF-008
 ```
 
-## 网页交互说明
+## Web UI interactions
 
-- 页面左上角下拉框：切换 `ALL` 或各个 `POD` 视图
-- 点击节点（Core/Spine/Leaf）：
-  - 显示该设备的连线统计和对端端口列表（右侧信息面板）
-  - 点击 Core 或 Spine 节点时，会动态叠加 Core-Spine 的连线，便于排查（再次点击空白处可清除）
-- 点击边：显示源/目标端口号（右侧信息面板）
+- POD selector (top-left): switch between `ALL` and specific PODs
+- Click a node (Core/Spine/Leaf):
+  - Shows number of connections and peer ports in the right info panel
+  - Clicking Core or Spine also overlays Core–Spine links for easier tracing
+    (click empty canvas to clear overlays)
+- Click an edge: shows source/target ports in the right info panel
 
-## 布局与视觉
+## Layout and visuals
 
-- POD 水平位置：
-  - 默认按内容宽度自动计算统一的 `POD` 间距，避免重叠
-  - 如仍感觉拥挤，可用 `--pod-margin` 增加外边距，或直接指定 `--pod-spacing`
-- Core 居中：自动计算所有 `Spine/Leaf` 的水平范围，将 `Core` 层整体居中显示
-- 节点标签：可通过 `--label-width` 增加标签宽度以完整显示设备名
+- POD placement:
+  - By default, POD spacing is auto-calculated from its content width plus margin
+  - If still crowded, increase `--pod-margin` or set a fixed `--pod-spacing`
+- Core centering:
+  - Core layer is centered above the combined horizontal range of all Spine/Leaf
+- Labels:
+  - Use `--label-width` to increase node label wrap width for long device names
 
-## 常见问题（FAQ）
+## Troubleshooting (FAQ)
 
-1. POD 之间仍有重叠？
-   - 先尝试提高 `--pod-margin`，例如 300 或 400
-   - 或直接指定较大的 `--pod-spacing`（如 1800），覆盖自动计算
+1) PODs overlap in ALL view
+   - Increase `--pod-margin` to 300 or 400
+   - Or set a fixed `--pod-spacing` (e.g., 1800) to override auto spacing
 
-2. Core 没有居中在 Spine/Leaf 上？
-   - 重新生成时确保已包含全部 POD 的节点（默认是有的）
-   - 若你只展示少量 POD，可直接改小或改大 `--node-gap` 让 Core 排布更紧凑/更分散
+2) Core not centered above Spine/Leaf
+   - Ensure the view includes the relevant PODs (ALL view does by default)
+   - Tweak `--node-gap` to make Core nodes more compact or more spread out
 
-3. 设备名太长看不清？
-   - 使用 `--label-width 180` 或更大数值
+3) Device names are truncated
+   - Increase `--label-width` (e.g., 180 or 220)
 
-4. 我想以机架/序号对齐排序？
-   - 目前默认以设备名排序并在 POD 内居中。如果你有明确排序规则（如解析 Gxx/Uxx），请告知，我们可以按机架/序号做行列对齐。
+4) I want rack/sequence-based alignment
+   - The current layout centers devices by name ordering within each POD.
+     If you have concrete rules (e.g., parse Gxx/Uxx), we can add rack/row alignment.
 
-## 目录结构（关键文件）
+## Project structure
 
 ```text
-generate_topology.py   # 主脚本：读取 CSV，生成 topology.html
-topology.html          # 生成的交互式拓扑网页（运行脚本后得到）
-Ports-*.csv            # UFM 导出的端口信息（任意版本，脚本会选最新）
-README.md              # 本使用说明
+generate_topology.py   # Main script: read CSV and generate topology.html
+topology.html          # Generated interactive topology web (after running script)
+Ports-*.csv            # UFM port CSV exports (newest is picked by default)
+README.md              # Chinese guide
 ```
-
-## 版权与致谢
-
-- 前端可视化基于 Cytoscape（通过 CDN 动态加载）
-- 本脚本仅使用 Python 标准库
-
-
