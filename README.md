@@ -115,5 +115,5 @@ python .\generate_topology.py --debug --debug-target-leaf MDC-...-POD2-...-IBLF-
 generate_topology.py   # Main script: read CSV and generate topology.html
 topology.html          # Generated interactive topology web (after running script)
 Ports-*.csv            # UFM port CSV exports (newest is picked by default)
-README.md              # Chinese guide
+README.md              # User guide
 ```
